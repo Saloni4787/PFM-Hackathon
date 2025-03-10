@@ -2,9 +2,11 @@ import os
 import requests
 import json
 from dotenv import load_dotenv
+from src.utils.io_utils import load_prompt
+
 load_dotenv()
 
-def chat_with_llm(user_message):
+def chat_with_llm(user_message, system_prompt_file= "prompts/system_prompt.txt"):
     
     API_KEY =  os.getenv("API_KEY")
     LLM_API_URL =  os.getenv("LLM_API_URL")
@@ -15,7 +17,7 @@ def chat_with_llm(user_message):
         "Content-Type": "application/json"
     }
     
-    system_prompt = "You are a friendly chatbot."
+    system_prompt = load_prompt(system_prompt_file)
     
     payload = {
         "model": MODEL,
