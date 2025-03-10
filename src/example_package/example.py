@@ -17,7 +17,7 @@ class ExampleClass:
 
     def increment(self) -> None:
         """Increment the stored value by 1."""
-        self.value += 1
+        self.value += 1 
 
     def get_value(self):
         """
