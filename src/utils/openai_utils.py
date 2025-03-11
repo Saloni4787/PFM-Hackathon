@@ -27,11 +27,11 @@ def chat_with_llm(user_message, system_prompt_file="prompts/system_prompt.txt"):
     
     conversation_history.append({"role": "user", "content": user_message})
     
-    # Print the conversation history to verify it's growing
-    print("\n--- Conversation History ---")
-    for msg in conversation_history:
-        print(f"{msg['role'].capitalize()}: {msg['content']}")
-    print("---------------------------\n")
+    # # Print the conversation history to verify it's growing
+    # print("\n--- Conversation History ---")
+    # for msg in conversation_history:
+    #     print(f"{msg['role'].capitalize()}: {msg['content']}")
+    # print("---------------------------\n")
     
     
     payload = {
