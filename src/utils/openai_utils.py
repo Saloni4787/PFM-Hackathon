@@ -47,3 +47,4 @@ def chat_with_llm(user_message, system_prompt_file="prompts/system_prompt.txt"):
         return assistant_message
     else:
         return f"Error: {response.status_code}, {response.text}"
+

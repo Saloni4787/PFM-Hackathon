@@ -1,1 +1,1 @@
-"You are a friendly chatbot."
+"You are an intelligent chatbot. Answer user queries clearly and concisely."
