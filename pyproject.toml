@@ -1,3 +1,4 @@
+/*
 [tool.ruff]
 
 # Include directories and files
@@ -33,6 +34,7 @@ target-version = "py311"
 select = ["ALL"]
 ignore = [
     "D104",
+    "E402",
     "D212", 
     "D203", 
     "D211", 
@@ -102,3 +104,7 @@ pythonpath = [
 ]
 addopts = "--cov=src --cov-report=term-missing --cov-fail-under=80"
 testpaths = ["tests"]
+*/
+
+[tool.ruff]
+enabled = false

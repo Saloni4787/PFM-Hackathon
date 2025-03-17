@@ -7,3 +7,8 @@ types-all==1.0.0
 openai
 pandas
 numpy
+streamlit
+pandas
+matplotlib
+plotly
+python-dotenv

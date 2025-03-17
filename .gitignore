@@ -113,3 +113,13 @@ venv.bak/
 .idea/
 *.swp
 *.swo
+
+#data
+*.csv
+*.xlsx
+
+#zip files
+*.zip
+
+#ipynb files
+*.ipynb
