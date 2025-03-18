@@ -40,7 +40,7 @@ class GoalPlanningAgent:
     """
     
     def __init__(self, 
-                data_path: str = "./data",
+                data_path: str = "./synthetic_data",
                 asset_allocation_agent: Optional[AssetAllocationAgent] = None,
                 education_agent: Optional[EducationAgent] = None):
         """
@@ -515,7 +515,7 @@ class GoalPlanningAgent:
                 goals_text += f"Type: {goal['Goal Type']}\n"
                 goals_text += f"Target Amount: ${goal['Target Amount']}\n"
                 goals_text += f"Current Savings: ${goal['Current Savings']}\n"
-                goals_text += f"Progress: {goal['Progress %']}%\n"
+                goals_text += f"Progress: {goal['Progress (%)']}%\n"
                 goals_text += f"Target Date: {goal['Target Date']}\n"
                 goals_text += f"Monthly Contribution: ${goal['Monthly Contribution']}\n"
                 goals_text += f"Priority: {goal['Priority']}\n"
@@ -977,7 +977,7 @@ class GoalPlanningAgent:
             goals_summary = ""
             if goals_data:
                 for goal in goals_data:
-                    goals_summary += f"- {goal['Goal Type']}: ${goal['Target Amount']} by {goal['Target Date']} (currently at {goal['Progress %']}%)\n"
+                    goals_summary += f"- {goal['Goal Type']}: ${goal['Target Amount']} by {goal['Target Date']} (currently at {goal['Progress (%)']}%)\n"
             else:
                 goals_summary = "You don't have any financial goals set up yet."
             
@@ -1265,7 +1265,7 @@ def main():
             print(f"Goal ID: {goal['Goal ID']}")
             print(f"Type: {goal['Goal Type']}")
             print(f"Target: ${goal['Target Amount']}")
-            print(f"Progress: {goal['Progress %']}%")
+            print(f"Progress: {goal['Progress (%)']}%")
             print()
     else:
         print("No goals found or error occurred.")

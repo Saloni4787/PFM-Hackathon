@@ -123,3 +123,5 @@ venv.bak/
 
 #ipynb files
 *.ipynb
+
+financial_data_generator_india.py

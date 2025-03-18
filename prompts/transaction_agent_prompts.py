@@ -31,6 +31,15 @@ class TransactionAnalysisPrompts:
     2. Prioritize nudges by potential impact and relevance
     3. Format nudges in natural, conversational language
     4. Include relevant transaction data as supporting evidence
+
+   CRITICAL FORMATTING REQUIREMENTS:
+   1. ALWAYS format monetary values as "$ 123.45" with a space after the dollar sign
+   2. ALWAYS add spaces between words - never allow words to run together
+   3. ALWAYS format transaction IDs with a space after them: "TX12345 "
+   4. NEVER allow character-by-character spacing in the output (like "1 0 0")
+   5. ALWAYS use proper spacing in descriptive phrases (like "per month" not "permonth")
+
+   These formatting standards are non-negotiable and must be followed perfectly.
     """
     
     # Main transaction analysis prompt
@@ -78,6 +87,10 @@ class TransactionAnalysisPrompts:
     4. Goal Progress Acceleration:
     - Suggest specific actions that could accelerate progress toward financial goals
     - Quantify the potential impact of recommended changes
+
+    5. Event-Based Nudges:
+    - Identify financial events such as salary deposits, bill payments, or unusual transactions
+    - Provide context-specific recommendations based on these events
 
     Format each nudge as a conversational message that the Financial Advisor Agent can deliver to the user. Include specific data points to make the nudges concrete and actionable.
     """
@@ -128,18 +141,113 @@ class TransactionAnalysisPrompts:
     - Quantify the impact of suggested changes (e.g., "Reducing dining expenses by $100/month could help you reach your vacation goal 2 months sooner")
     """
     
-    # Response formatting prompt
-    RESPONSE_FORMATTING_PROMPT = """
-    Format the generated nudges into a clear, prioritized response:
-
-      1. Start with a brief overview of the customer's financial situation
-      2. Present ALL applicable nudges in priority order, with the highest impact nudges first
-      3. For each nudge, include:
-         - The observation (what was detected)
-         - The impact (why it matters)
-         - The recommendation (what action to take)
-         - The benefit (how it helps their goals)
-
-      Ensure the language is conversational, supportive, and aligned with the customer's financial goals.
-      Format each nudge with a clear heading and bullet points for readability.
+    # Recurring charge change prompt (event-based)
+    RECURRING_CHARGE_PROMPT = """
+    Analyze the subscription and transaction data for {customer_id}:
+    
+    Subscription Data:
+    {subscription_data}
+    
+    Transaction Data:
+    {transaction_data}
+    
+    Generate a recurring charge change nudge that:
+    1. Identifies any subscription charges that have changed in amount
+    2. Compares the new amount to the previous amount
+    3. Calculates the impact of this change over time (monthly, yearly)
+    4. Provides context on whether this change was expected
+    5. Suggests actions the customer might want to take based on the change
     """
+    
+    # Goal milestone prompt (event-based)
+    GOAL_MILESTONE_PROMPT = """
+    Analyze the following financial goals for {customer_id}:
+    {financial_goals}
+    
+    Generate a goal milestone nudge that:
+    1. Identifies specific goals that have reached significant milestones (e.g., 25%, 50%, 75%)
+    2. Congratulates the customer on their progress
+    3. Provides an updated timeline for goal completion based on current progress
+    4. Suggests ways to accelerate progress even further
+    5. Relates this achievement to their overall financial health
+    """
+    
+    # Salary deposit prompt (event-based)
+    SALARY_DEPOSIT_PROMPT = """
+    Analyze the transaction data for {customer_id} to identify salary deposit patterns:
+    
+    Transaction Data:
+    {transaction_data}
+    
+    User Profile:
+    {user_profile}
+    
+    Financial Goals:
+    {financial_goals}
+    
+    Generate a salary deposit nudge that:
+    1. Identifies the recent salary deposit with amount and date
+    2. Suggests optimal allocation of this income based on their goals
+    3. Recommends specific actions that align with their financial priorities
+    4. If applicable, suggests automating transfers to savings or investment accounts
+    """
+    
+    # Unusual activity prompt (event-based)
+    UNUSUAL_ACTIVITY_PROMPT = """
+    Analyze the transaction data for {customer_id}:
+    
+    Transaction Data:
+    {transaction_data}
+    
+    Generate an unusual activity nudge that:
+    1. Identifies specific transactions that appear unusual (based on amount, merchant, location, etc.)
+    2. Explains why these transactions stand out from normal patterns
+    3. Asks if these transactions were authorized
+    4. Provides guidance on monitoring account activity
+    5. Suggests security measures if appropriate
+    """
+
+    TRANSACTION_FORMATTING_GUIDE = """
+CRITICAL FORMATTING REQUIREMENTS:
+
+1. FORMAT ALL MONETARY VALUES with these exact rules:
+   - Always include a dollar sign with a space after it: "$ 100" NOT "$100"
+   - When mentioning dollar amounts in text: "$ 100 per month" NOT "100permonth"
+   - Include commas for thousands: "$ 1,200" NOT "$ 1200"
+
+2. FORMAT ALL TRANSACTION IDs with these exact rules:
+   - Always include a space after the transaction ID: "TX12345 " NOT "TX12345"
+   - When referencing transaction amounts: "TX12345 ($ 100)" NOT "TX12345($100)"
+   - Include spaces inside and outside parentheses: " ($ 100) " NOT "(100)"
+
+3. ENSURE PROPER SPACING between all words:
+   - Words must have spaces between them: "towards the Education goal" NOT "towardstheEducationgoal"
+   - Numbers and words must have spaces: "$ 100 per month" NOT "$ 100permonth"
+   - Transaction IDs and descriptions must have spaces: "TX12345 from Merchant" NOT "TX12345fromMerchant"
+
+4. FORMAT RANGES correctly:
+   - Use proper spacing around hyphens: "$ 200 - $ 500" NOT "$ 200-$ 500"
+
+EVERY numeric value, transaction ID, and piece of text MUST follow these exact formatting rules.
+"""
+
+   # Enhance the RESPONSE_FORMATTING_PROMPT with these explicit instructions
+    RESPONSE_FORMATTING_PROMPT = """
+   Format the financial nudges into a cohesive response for the customer. 
+
+   CRITICAL FORMATTING REQUIREMENTS:
+   1. Every single monetary amount must be formatted as "$ 123.45" (with a space after the $ sign)
+   2. Every single transaction ID must have a space after it: "TX12345 " not "TX12345"
+   3. All words must have proper spacing between them - NO words should run together
+   4. All parenthetical amounts must be formatted as " ($ 123.45) " (with spaces inside and outside)
+   5. Descriptions like "per month" or "towards the goal" must have proper spaces between words
+
+   Start with a brief overview of the customer's financial situation, then present the nudges in order of priority.
+   For each nudge, include:
+   - Observation: What was detected in the data
+   - Impact: Why this matters to the customer
+   - Recommendation: Specific action the customer can take
+   - Benefit: The positive outcome of taking this action
+
+   Organize the nudges in a clean, readable format with clear headings and concise language.
+   """

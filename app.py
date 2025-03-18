@@ -97,10 +97,10 @@ def display_goals_card(goal):
         <div style="border:1px solid #ddd; border-radius:5px; padding:10px; margin-bottom:10px;">
             <h3>{goal['Goal Name']}</h3>
             <p><strong>Target:</strong> ${goal['Target Amount']:,.2f} by {goal['Target Date']}</p>
-            <p><strong>Current:</strong> ${goal['Current Savings']:,.2f} ({goal['Progress %']:.1f}% complete)</p>
+            <p><strong>Current:</strong> ${goal['Current Savings']:,.2f} ({goal['Progress (%)']:.1f}% complete)</p>
             <p><strong>Monthly Contribution:</strong> ${goal['Monthly Contribution']:,.2f}</p>
             <div style="background-color:#f0f2f6; border-radius:3px; height:10px; width:100%;">
-                <div style="background-color:#4e8df5; border-radius:3px; height:10px; width:{min(goal['Progress %'], 100)}%;"></div>
+                <div style="background-color:#4e8df5; border-radius:3px; height:10px; width:{min(goal['Progress (%)'], 100)}%;"></div>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -341,8 +341,8 @@ def goal_planning_page():
                     
                     with col2:
                         # Create a progress bar
-                        progress = goal['Progress %'] / 100
-                        st.metric("Progress", f"{goal['Progress %']}%")
+                        progress = goal['Progress (%)'] / 100
+                        st.metric("Progress", f"{goal['Progress (%)']}%")
                         st.progress(progress)
                     
                     st.divider()
@@ -572,10 +572,10 @@ def data_visualization_page():
                 x_start='Start Date',
                 x_end='Target Date',
                 y='Goal Name',
-                color='Progress %',
+                color='Progress (%)',
                 color_continuous_scale='blues',
                 title='Goal Timeline',
-                labels={'Progress %': 'Progress (%)'}
+                labels={'Progress (%)': 'Progress (%)'}
             )
             
             # Update layout for better display

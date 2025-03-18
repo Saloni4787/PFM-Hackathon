@@ -396,6 +396,66 @@ MERCHANT_CATEGORIES = {
     "Gifts": ["Gift Shop", "Online Gift Store", "Flower Shop", "Jewelry Store", "Department Store"]
 }
 
+# Description templates for transaction types
+TRANSACTION_DESCRIPTIONS = {
+    "Purchase": [
+        "Purchase at {merchant}",
+        "{merchant} purchase",
+        "Retail purchase - {merchant}",
+        "Purchase - {merchant}",
+        "Shopping at {merchant}"
+    ],
+    "Transfer": [
+        "Transfer to account",
+        "Money transfer",
+        "Account transfer",
+        "Transfer - {merchant}",
+        "Electronic transfer"
+    ],
+    "Withdrawal": [
+        "ATM withdrawal",
+        "Cash withdrawal",
+        "Withdrawal at {merchant}",
+        "Bank withdrawal",
+        "Cash back"
+    ],
+    "Deposit": [
+        "Direct deposit",
+        "Check deposit",
+        "Mobile deposit",
+        "Deposit at ATM",
+        "Electronic deposit",
+        "Salary deposit",
+        "Paycheck deposit"
+    ],
+    "Payment": [
+        "Bill payment - {merchant}",
+        "Monthly payment to {merchant}",
+        "Automatic payment - {merchant}",
+        "Payment for services",
+        "Utility payment - {merchant}",
+        "Subscription payment - {merchant}",
+        "Loan payment"
+    ],
+    "Refund": [
+        "Refund from {merchant}",
+        "Purchase refund",
+        "Credit - {merchant}",
+        "Return refund",
+        "Service refund - {merchant}"
+    ]
+}
+
+# Add specific keyword-containing descriptions for overdraft detection
+OVERDRAFT_DESCRIPTIONS = [
+    "Overdraft fee",
+    "Overdraft protection fee",
+    "Overdraft transfer fee",
+    "Overdraft coverage",
+    "NSF fee",
+    "Insufficient funds fee"
+]
+
 # Helper functions
 def generate_customer_id(index: int) -> str:
     """Generate a unique customer ID."""
@@ -659,6 +719,16 @@ def generate_goal_amount(goal_type: str, income: float, monthly_expenses: float)
         min_amount, max_amount = template.get("amount_fixed_range", (5000, 50000))
         return round(random.uniform(min_amount, max_amount), 2)
 
+def generate_description(transaction_type: str, merchant_name: str) -> str:
+    """Generate a description for a transaction based on its type and merchant."""
+    # Sometimes generate an overdraft fee description
+    if random.random() < 0.02:  # 2% chance of being an overdraft
+        return random.choice(OVERDRAFT_DESCRIPTIONS)
+
+    description_templates = TRANSACTION_DESCRIPTIONS.get(transaction_type, ["{merchant} transaction"])
+    description = random.choice(description_templates)
+    return description.format(merchant=merchant_name)
+
 def generate_user_data() -> List[Dict[str, Any]]:
     """Generate data for users based on defined archetypes."""
     users = []
@@ -825,7 +895,7 @@ def generate_budget_data(users: List[Dict[str, Any]]) -> None:
                 "category": category,
                 "monthly_limit": monthly_limit,
                 "spent_so_far": spent_so_far,
-                "utilization_percentage": round(utilization_pct, 2)
+                "% Utilized": round(utilization_pct, 2)  # Keep the original column name
             }
             
             # Add to user's budget data
@@ -935,6 +1005,9 @@ def generate_transaction_data(users: List[Dict[str, Any]]) -> None:
             transaction_location = f"Location {random.randint(1, 50)}"
             payment_mode = random.choice(["Debit Card", "Credit Card", "Wallet", "Net Banking"])
             
+            # Generate a description for the transaction
+            description = generate_description(transaction_type, merchant_name)
+            
             # Create transaction entry
             transaction = {
                 "transaction_id": transaction_id,
@@ -950,7 +1023,8 @@ def generate_transaction_data(users: List[Dict[str, Any]]) -> None:
                 "merchant_id": merchant_id,
                 "merchant_name": merchant_name,
                 "transaction_location": transaction_location,
-                "payment_mode": payment_mode
+                "payment_mode": payment_mode,
+                "description": description  # Add description for the transaction analysis agent
             }
             
             transactions.append(transaction)
@@ -1012,20 +1086,6 @@ def write_csv_files(users: List[Dict[str, Any]], output_path: str) -> None:
     """Write all data to CSV files in the specified output directory."""
     ensure_directory(output_path)
     
-    # Global counters for entity IDs
-    global global_subscription_counter
-    
-    # Add merchant category directly to the transaction data
-    for user in users:
-        transactions = []
-        
-        # Add merchant category directly to the transaction data
-        for txn in user["transactions"]:
-            txn["merchant_category"] = txn["merchant_category_code"]
-            transactions.append(txn)
-        
-        user["transactions"] = transactions
-    
     # Write user profile data
     user_profile_data = []
     for user in users:
@@ -1061,7 +1121,8 @@ def write_csv_files(users: List[Dict[str, Any]], output_path: str) -> None:
                 "Current Savings": goal["current_savings"],
                 "Target Date": goal["target_date"],
                 "Goal Type": goal["goal_type"],
-                "Goal Timeline": goal["goal_timeline"]
+                "Goal Timeline": goal["goal_timeline"],
+                "Progress (%)": goal["progress_percentage"]  # Add progress percentage
             })
     
     with open(os.path.join(output_path, "financial_goals_data.csv"), "w", newline="") as f:
@@ -1080,7 +1141,7 @@ def write_csv_files(users: List[Dict[str, Any]], output_path: str) -> None:
                 "Category": budget["category"],
                 "Monthly Limit": budget["monthly_limit"],
                 "Spent So Far": budget["spent_so_far"],
-                "% Utilized": budget["utilization_percentage"]
+                "% Utilized": budget["% Utilized"]  # Use the original column name
             })
     
     with open(os.path.join(output_path, "budget_data.csv"), "w", newline="") as f:
@@ -1108,26 +1169,33 @@ def write_csv_files(users: List[Dict[str, Any]], output_path: str) -> None:
             writer.writeheader()
             writer.writerows(subscription_data)
     
-    # Write transaction data
+    # Write transaction data - Using exact column names expected by the agent
     transaction_data = []
     for user in users:
-        for transaction in user["transactions"]:
-            transaction_data.append({
-                "Transaction ID": transaction["transaction_id"],
-                "Account Number": transaction["account_number"],
-                "Customer ID": transaction["customer_id"],
-                "Transaction Type": transaction["transaction_type"],
-                "Transaction Date and Time": transaction["transaction_date_time"],
-                "Transaction Amount": transaction["transaction_amount"],
-                "Closing Balance": transaction["closing_balance"],
-                "Transaction Mode": transaction["transaction_mode"],
-                "Transaction Status": transaction["transaction_status"],
-                "Merchant Category Code": transaction["merchant_category_code"],
-                "Merchant ID": transaction["merchant_id"],
-                "Merchant Name": transaction["merchant_name"],
-                "Transaction Location": transaction["transaction_location"],
-                "Payment Mode": transaction["payment_mode"]
-            })
+        for txn in user["transactions"]:
+            # Create a new transaction entry with the exact column names the agent expects
+            transaction_entry = {
+                "Transaction ID": txn["transaction_id"],
+                "Account Number": txn["account_number"],
+                "Customer ID": txn["customer_id"],  # Exactly as the agent expects it
+                "Transaction Type": txn["transaction_type"],
+                "Transaction Date and Time": txn["transaction_date_time"],
+                "Transaction Amount": txn["transaction_amount"],
+                "Closing Balance": txn["closing_balance"],
+                "Transaction Mode": txn["transaction_mode"],
+                "Transaction Status": txn["transaction_status"],
+                "Merchant Category Code": txn["merchant_category_code"],
+                "Merchant ID": txn["merchant_id"],
+                "Merchant Name": txn["merchant_name"],
+                "Transaction Location": txn["transaction_location"],
+                "Payment Mode": txn["payment_mode"],
+                "Description": txn["description"]  # From our earlier addition
+            }
+            
+            # Add merchant category based on merchant category code (keep original data intact)
+            transaction_entry["Merchant Category"] = txn["merchant_category_code"]
+            
+            transaction_data.append(transaction_entry)
     
     with open(os.path.join(output_path, "transactions_data.csv"), "w", newline="") as f:
         if transaction_data:
@@ -1246,7 +1314,7 @@ def write_csv_files(users: List[Dict[str, Any]], output_path: str) -> None:
                 "Start Date": goal["start_date"],
                 "Last Updated": goal["last_updated"],
                 "Automatic Contribution": "Yes" if goal["automatic_contribution"] else "No",
-                "Progress %": goal["progress_percentage"]
+                "Progress (%)": goal["progress_percentage"]
             })
     
     with open(os.path.join(output_path, "enhanced_goal_data.csv"), "w", newline="") as f:

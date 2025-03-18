@@ -128,6 +128,37 @@ class TransactionAnalysisAgent:
                 "name": "High Transaction Frequency",
                 "description": "Unusually high number of transactions in a category",
                 "check_function": self._check_transaction_frequency
+            },
+            # Event-based nudges
+            "salary_deposit": {
+                "name": "Salary Deposit Detected",
+                "description": "Detection of recurring salary deposits",
+                "check_function": self._check_salary_deposit
+            },
+            "bill_payment": {
+                "name": "Bill Payment Reminder",
+                "description": "Reminders for upcoming bill payments",
+                "check_function": self._check_bill_payment
+            },
+            "recurring_charge": {
+                "name": "Recurring Charge Change",
+                "description": "Detection of changes in recurring charge amounts",
+                "check_function": self._check_recurring_charge_change
+            },
+            "unusual_activity": {
+                "name": "Unusual Account Activity",
+                "description": "Detection of unusual spending patterns or transactions",
+                "check_function": self._check_unusual_activity
+            },
+            "overdraft_fee": {
+                "name": "Overdraft Fee",
+                "description": "Alert when overdraft fees are charged",
+                "check_function": self._check_overdraft_fee
+            },
+            "goal_milestone": {
+                "name": "Financial Goal Milestone",
+                "description": "Notification when a financial goal milestone is reached",
+                "check_function": self._check_goal_milestone
             }
         }
     
@@ -209,6 +240,65 @@ class TransactionAnalysisAgent:
         # If more than 5 transactions, consider this applicable
         return len(customer_txns) > 5
     
+    # Event-based nudge check functions
+    def _check_salary_deposit(self, customer_id: str) -> bool:
+        """Check for recurring salary deposits."""
+        customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
+        
+        # Look for deposits (negative transaction amounts) over $1000
+        # In real system, would check for recurring pattern from same source
+        if not customer_txns.empty:
+            deposits = customer_txns[customer_txns['Transaction Amount'] < 0]
+            return any(abs(deposits['Transaction Amount']) > 1000)
+        return False
+    
+    def _check_bill_payment(self, customer_id: str) -> bool:
+        """Check for upcoming bill payments based on historical patterns."""
+        # For MVP, we'll check if there are any transactions with "bill", "payment", or "utility" in description
+        customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
+        
+        if not customer_txns.empty:
+            bill_related = customer_txns['Description'].str.contains('bill|payment|utility', case=False)
+            return bill_related.any()
+        return False
+    
+    def _check_recurring_charge_change(self, customer_id: str) -> bool:
+        """Check for changes in recurring charge amounts."""
+        # This would normally compare current subscription costs to previous months
+        # For MVP, we'll assume this applies if customer has subscriptions
+        customer_subs = self.subscription_df[self.subscription_df['Customer ID'] == customer_id]
+        return not customer_subs.empty
+    
+    def _check_unusual_activity(self, customer_id: str) -> bool:
+        """Check for unusual account activity or spending patterns."""
+        # For MVP implementation, we'll consider merchant categories not frequently used
+        customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
+        
+        # In a real system, this would be more sophisticated with statistical analysis
+        # For now, consider transactions over $300 as unusual
+        if not customer_txns.empty:
+            return any(customer_txns['Transaction Amount'] > 300)
+        return False
+    
+    def _check_overdraft_fee(self, customer_id: str) -> bool:
+        """Check if customer has been charged overdraft fees."""
+        customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
+        
+        # Look for transactions with "overdraft fee" or "overdraft charge" in description
+        if not customer_txns.empty:
+            overdraft_txns = customer_txns['Description'].str.contains('overdraft', case=False)
+            return overdraft_txns.any()
+        return False
+    
+    def _check_goal_milestone(self, customer_id: str) -> bool:
+        """Check if customer has reached a milestone for any financial goal."""
+        customer_goals = self.financial_goals_df[self.financial_goals_df['Customer ID'] == customer_id.lower()]
+        
+        # For MVP, assume milestone is reached if goal is at least 50% complete
+        if not customer_goals.empty:
+            return any(customer_goals['Progress (%)'] >= 50)
+        return False
+    
     def _format_data_for_prompt(self, customer_id: str) -> Dict[str, str]:
         """
         Format customer data for use in prompts.
@@ -264,8 +354,26 @@ class TransactionAnalysisAgent:
         # Create a specialized prompt based on applicable nudges
         nudge_prompt = self._create_specialized_nudge_prompt(customer_id, applicable_nudges, formatted_data)
         
+        # Add explicit formatting guidelines to the prompt
+        nudge_prompt += "\n\n" + TransactionAnalysisPrompts.TRANSACTION_FORMATTING_GUIDE
+        nudge_prompt += "\n\nThese formatting requirements are CRITICAL and must be applied consistently throughout your response."
+        
+        # Enhanced system prompt with explicit formatting requirements
+        system_prompt = TransactionAnalysisPrompts.SYSTEM_PROMPT + """
+
+CRITICAL FORMATTING REQUIREMENTS:
+1. ALWAYS format monetary values as "$ 123.45" with a space after the dollar sign
+2. ALWAYS add spaces between words - never allow words to run together
+3. ALWAYS format transaction IDs with a space after them: "TX12345 "
+4. NEVER allow character-by-character spacing in the output (like "1 0 0")
+5. ALWAYS use proper spacing in descriptive phrases (like "per month" not "permonth")
+6. ALWAYS format parenthetical amounts as " ($ 123.45) " with spaces inside and outside
+7. ALWAYS format numbers with proper digit grouping (e.g., "$ 1,200" not "$ 1200")
+
+These formatting standards are non-negotiable and must be followed perfectly.
+"""
+        
         # Call the LLM to generate nudges
-        system_prompt = TransactionAnalysisPrompts.SYSTEM_PROMPT
         nudge_response = generate_text(
             prompt=nudge_prompt,
             system_prompt=system_prompt,
@@ -273,11 +381,51 @@ class TransactionAnalysisAgent:
             max_tokens=3000
         )
         
-        # Format the final response
-        formatting_prompt = TransactionAnalysisPrompts.RESPONSE_FORMATTING_PROMPT
+        # Format the final response with explicit formatting instructions
+        formatting_prompt = TransactionAnalysisPrompts.RESPONSE_FORMATTING_PROMPT + """
+
+REMINDER - These formatting requirements are ABSOLUTELY CRITICAL:
+1. EVERY monetary amount must be formatted as "$ 123.45" (with a space after the $ sign)
+2. EVERY transaction ID must have a space after it: "TX12345 " not "TX12345"
+3. ALL words must have proper spacing between them - NO words should run together
+4. ALL parenthetical amounts must be formatted as " ($ 123.45) " (with spaces inside and outside)
+5. EVERY descriptive phrase must have proper spaces: "per month" not "permonth"
+6. NEVER output text with character-by-character spacing (like "1 0 0" or "p e r")
+7. NUMBERS running into TEXT must be separated: "$ 100 per month" not "$ 100permonth"
+
+The quality of your response will be primarily judged on whether you follow these formatting rules perfectly.
+"""
+        
         final_response = generate_text(
             prompt=f"{formatting_prompt}\n\nNudges to format (ONLY for these applicable types: {', '.join(applicable_nudges)}):\n{nudge_response}",
             system_prompt=system_prompt,
+            temperature=1e-8,
+            max_tokens=2000
+        )
+        
+        # One quick check to verify the formatting is correct
+        verification_prompt = """
+        This is a verification pass to make sure the document follows the critical formatting requirements.
+        
+        Check EVERY INSTANCE of these elements and fix ANY that don't conform:
+        
+        1. ALL monetary amounts: Must be "$ 123.45" with a space after the dollar sign
+        2. ALL transaction IDs: Must have a space after them, like "TX12345 "
+        3. ALL words: Must have proper spacing - no run-together words
+        4. ALL parenthetical amounts: Must be " ($ 123.45) " with spaces
+        5. ALL numeric values in text: Must have proper spacing "$ 100 per month"
+        
+        If you see ANY formatting issues at all, fix them.
+        
+        Document to verify:
+        
+        {response}
+        """
+        
+        # Run a verification to catch any remaining issues
+        final_response = generate_text(
+            prompt=verification_prompt.format(response=final_response),
+            system_prompt="You are a financial document formatting expert. Your only job is to ensure the document follows the required formatting rules EXACTLY as specified.",
             temperature=1e-8,
             max_tokens=2000
         )
@@ -319,6 +467,16 @@ class TransactionAnalysisAgent:
         specialized_sections = [
             f"Focus ONLY on generating the following types of nudges that are relevant to this customer: {', '.join(applicable_nudges)}."
         ]
+        
+        # Add important formatting reminder
+        specialized_sections.append("""
+        REMEMBER: All monetary values MUST be formatted as "$ 123.45" with a space after the dollar sign.
+        All transaction IDs MUST have a space after them (e.g., "TX12345 ").
+        All words in descriptive phrases MUST have proper spacing (e.g., "per month" not "permonth").
+        All parenthetical amounts MUST be formatted as " ($ 123.45) " with spaces inside and outside.
+        NEVER allow words to run together without spaces.
+        NEVER allow character-by-character spacing in the output.
+        """)
         
         # Create a mapping of nudge types to their specialized prompts
         nudge_prompt_mapping = {
@@ -397,7 +555,87 @@ class TransactionAnalysisAgent:
                 3. Compares this to what would be considered a normal frequency
                 4. Highlights any potential impact on their budget or financial goals
                 5. Offers actionable suggestions that could optimize their transaction behavior
-            """
+            """,
+            # Event-based nudge prompts
+            "salary_deposit": f"""
+                Analyze the transaction data for {customer_id} to identify salary deposit patterns:
+                
+                Transaction Data:
+                {formatted_data["transaction_data"]}
+                
+                User Profile:
+                {formatted_data["user_profile"]}
+                
+                Financial Goals:
+                {formatted_data["financial_goals"]}
+                
+                Generate a salary deposit nudge that:
+                1. Identifies the recent salary deposit(s) with amount and date
+                2. Suggests optimal allocation of this income based on their goals
+                3. Recommends specific actions that align with their financial priorities
+                4. If applicable, suggests automating transfers to savings or investment accounts
+                5. Relates the recommendations to their budget categories and goal progress
+            """,
+            "bill_payment": f"""
+                Analyze the transaction data for {customer_id} to identify recurring bill payments:
+                
+                Transaction Data:
+                {formatted_data["transaction_data"]}
+                
+                User Profile:
+                {formatted_data["user_profile"]}
+                
+                Budget Data:
+                {formatted_data["budget_data"]}
+                
+                Generate a bill payment reminder nudge that:
+                1. Identifies upcoming bill payments based on historical patterns
+                2. Provides the specific dates and expected amounts
+                3. Alerts if there might be insufficient funds for any upcoming payments
+                4. Suggests budget adjustments if needed
+                5. Offers recommendations for managing bill payments more effectively
+            """,
+            "recurring_charge_change": TransactionAnalysisPrompts.RECURRING_CHARGE_PROMPT.format(
+                customer_id=customer_id,
+                subscription_data=formatted_data["subscription_data"],
+                transaction_data=formatted_data["transaction_data"]
+            ),
+            "unusual_activity": f"""
+                Analyze the transaction data for {customer_id} to identify unusual activity:
+                
+                Transaction Data:
+                {formatted_data["transaction_data"]}
+                
+                User Profile:
+                {formatted_data["user_profile"]}
+                
+                Generate an unusual activity nudge that:
+                1. Identifies specific transactions that appear unusual (based on amount, merchant, location, etc.)
+                2. Explains why these transactions stand out from normal patterns
+                3. Asks if these transactions were authorized
+                4. Provides guidance on monitoring account activity
+                5. Suggests security measures if appropriate
+            """,
+            "overdraft_fee": f"""
+                Analyze the transaction data for {customer_id} to identify overdraft fees:
+                
+                Transaction Data:
+                {formatted_data["transaction_data"]}
+                
+                User Profile:
+                {formatted_data["user_profile"]}
+                
+                Generate an overdraft fee alert nudge that:
+                1. Identifies the specific overdraft fee charge(s) with date and amount
+                2. Explains the circumstances that led to the overdraft
+                3. Calculates the total amount paid in overdraft fees
+                4. Provides specific strategies to avoid future overdrafts
+                5. If applicable, suggests account types or settings that could prevent overdrafts
+            """,
+            "goal_milestone": TransactionAnalysisPrompts.GOAL_MILESTONE_PROMPT.format(
+                customer_id=customer_id,
+                financial_goals=formatted_data["financial_goals"]
+            )
         }
         
         # Add specialized sections only for applicable nudges
@@ -411,6 +649,19 @@ class TransactionAnalysisAgent:
             specialized_sections.append(
                 f"Do NOT generate nudges for the following types, as they are not applicable to this customer at this time: {', '.join(non_applicable)}."
             )
+        
+        # Add final reminder about formatting requirements
+        specialized_sections.append("""
+        FINAL CRITICAL REMINDER: 
+        - ALL monetary values MUST be formatted as "$ 123.45" with a space after the dollar sign
+        - ALL transaction IDs MUST have a space after them like "TX12345 "
+        - NEVER allow character-by-character spacing in your output
+        - NEVER allow words to run together like "permonth" instead of "per month"
+        - ALWAYS format ranges with proper spacing: "$ 200 - $ 500" not "$200-$500"
+        - ALWAYS format parenthetical amounts as " ($ 123.45) " with spaces inside and outside
+        
+        The quality of your response will be primarily judged by whether you format ALL text elements correctly.
+        """)
         
         # Combine all prompt sections
         full_prompt = base_prompt + "\n\n" + "\n\n".join(specialized_sections)
