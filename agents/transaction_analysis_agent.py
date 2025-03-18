@@ -56,6 +56,8 @@ class TransactionAnalysisAgent:
         try:
             # Load transactions data
             self.transactions_df = pd.read_csv(f"{self.data_path}/transactions_data.csv")
+            self.transactions_df = self.transactions_df[self.transactions_df["Transaction Status"].isin(["Completed","Pending"])]
+            self.transactions_df = self.transactions_df[self.transactions_df["Transaction Type"].isin(["Withdrawal","Payment", "Transfer", "Purchase", "Deposit"])]
             
             # Load user profiles
             self.user_profiles_df = pd.read_csv(f"{self.data_path}/user_profile_data.csv")
@@ -192,6 +194,17 @@ class TransactionAnalysisAgent:
             return any(customer_txns['Transaction Amount'] > 200)
         return False
     
+    
+    def check_high_category_spending(self, customer_id: str) -> bool:
+        """Check if customer has unusually high spending in any category."""
+        # Get customer transactions
+        customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
+        
+        # Simple implementation - in real system would be more sophisticated
+        if len(customer_txns) > 0:
+            # Check if any transaction is over $200
+            return (customer_txns[customer_txns['Transaction Amount'] > 200])
+    
     def _check_subscription_burden(self, customer_id: str) -> bool:
         """Check if customer has multiple subscriptions."""
         customer_subs = self.subscription_df[self.subscription_df['Customer ID'] == customer_id]
@@ -233,12 +246,26 @@ class TransactionAnalysisAgent:
         # Look for transactions over $400
         return any(customer_txns['Transaction Amount'] > 400)
     
+    def check_large_transactions(self, customer_id: str) -> bool:
+        """Check for unusually large transactions."""
+        customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
+        
+        # Look for transactions over $400
+        return (customer_txns[customer_txns['Transaction Amount'] > 400])
+    
     def _check_transaction_frequency(self, customer_id: str) -> bool:
         """Check for high frequency of transactions in any category."""
         customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
         
         # If more than 5 transactions, consider this applicable
-        return len(customer_txns) > 5
+        # return len(customer_txns) > 5
+        # Count transactions per merchant category
+        category_counts = customer_txns['Merchant Category'].value_counts()
+
+        # Filter categories with more than 5 transactions
+        high_freq_categories = category_counts[category_counts > 5].index.tolist()
+
+        return high_freq_categories
     
     # Event-based nudge check functions
     def _check_salary_deposit(self, customer_id: str) -> bool:
@@ -394,6 +421,7 @@ REMINDER - These formatting requirements are ABSOLUTELY CRITICAL:
 7. NUMBERS running into TEXT must be separated: "$ 100 per month" not "$ 100permonth"
 
 The quality of your response will be primarily judged on whether you follow these formatting rules perfectly.
+Make sure to ONLY OUTPUT THE DOCUMENT
 """
         
         final_response = generate_text(
@@ -420,6 +448,8 @@ The quality of your response will be primarily judged on whether you follow thes
         Document to verify:
         
         {response}
+        
+        ONLY OUTPUT THE DOCUMENT
         """
         
         # Run a verification to catch any remaining issues
@@ -494,7 +524,8 @@ The quality of your response will be primarily judged on whether you follow thes
                 transaction_data=formatted_data["transaction_data"]
             ),
             "high_category_spending": f"""
-                Analyze the transaction data for {customer_id} and identify categories with unusually high spending.
+                Analyze the transaction data for {customer_id} and identify categories with unusually high spending. 
+                Explain about the transaction and why it is considered high. Output the highest transaction.
                 Compare spending in each category against typical patterns and highlight significant increases.
                 Connect this insight to the customer's goals and suggest actionable ways to manage category spending.
             """,
@@ -521,7 +552,7 @@ The quality of your response will be primarily judged on whether you follow thes
             """,
             "large_transaction": f"""
                 Analyze the following transaction data for {customer_id} to identify unusually large transactions:
-                
+                Explain about the transaction and why it is considered large transaction. Output the most large transaction.
                 Transaction Data:
                 {formatted_data["transaction_data"]}
                 
@@ -539,7 +570,7 @@ The quality of your response will be primarily judged on whether you follow thes
             """,
             "transaction_frequency": f"""
                 Analyze the following transaction data for {customer_id} to identify categories with high transaction frequency:
-                
+                Explain about the transaction and why it is considered high frequency.
                 Transaction Data:
                 {formatted_data["transaction_data"]}
                 
@@ -602,7 +633,7 @@ The quality of your response will be primarily judged on whether you follow thes
             ),
             "unusual_activity": f"""
                 Analyze the transaction data for {customer_id} to identify unusual activity:
-                
+                Explain about the transaction and why it is considered unusual.
                 Transaction Data:
                 {formatted_data["transaction_data"]}
                 
@@ -661,6 +692,8 @@ The quality of your response will be primarily judged on whether you follow thes
         - ALWAYS format parenthetical amounts as " ($ 123.45) " with spaces inside and outside
         
         The quality of your response will be primarily judged by whether you format ALL text elements correctly.
+        
+        ONLY OUTPUT THE NUDGES
         """)
         
         # Combine all prompt sections
