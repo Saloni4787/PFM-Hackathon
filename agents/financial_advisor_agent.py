@@ -429,7 +429,7 @@ class FinancialAdvisorAgent:
                         if goals_list:
                             goals_text = "\n".join([
                                 f"- {goal['Goal Type']}: ${goal['Target Amount']:,.2f} "
-                                f"({goal['Progress %']:.1f}% complete, target: {goal['Target Date']})"
+                                f"({goal['Progress (%)']:.1f}% complete, target: {goal['Target Date']})"
                                 for goal in goals_list
                             ])
                             agent_responses["Goal Planning"] = f"Current financial goals:\n{goals_text}"

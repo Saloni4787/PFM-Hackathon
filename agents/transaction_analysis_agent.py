@@ -188,23 +188,22 @@ class TransactionAnalysisAgent:
         # Get customer transactions
         customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
         
-        # Simple implementation - in real system would be more sophisticated
-        if len(customer_txns) > 0:
-            # Check if any transaction is over $200
-            return any(customer_txns['Transaction Amount'] > 200)
-        return False
-    
-    
-    def check_high_category_spending(self, customer_id: str) -> bool:
-        """Check if customer has unusually high spending in any category."""
-        # Get customer transactions
-        customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
+        # # Simple implementation - in real system would be more sophisticated
+        # if len(customer_txns) > 0:
+        #     # Check if any transaction is over $200
+        #     return any(customer_txns['Transaction Amount'] > 200)
+        # return False
         
-        # Simple implementation - in real system would be more sophisticated
-        if len(customer_txns) > 0:
-            # Check if any transaction is over $200
-            return (customer_txns[customer_txns['Transaction Amount'] > 200])
-    
+      
+        if not customer_txns.empty:
+            # Group by category and check if any category has transactions over $200
+            high_spending = customer_txns.groupby('Merchant Category')['Transaction Amount'].max() > 200
+
+            # Return True if any category has high spending
+            return high_spending.any()
+        
+        return False
+
     def _check_subscription_burden(self, customer_id: str) -> bool:
         """Check if customer has multiple subscriptions."""
         customer_subs = self.subscription_df[self.subscription_df['Customer ID'] == customer_id]
@@ -246,13 +245,6 @@ class TransactionAnalysisAgent:
         # Look for transactions over $400
         return any(customer_txns['Transaction Amount'] > 400)
     
-    def check_large_transactions(self, customer_id: str) -> bool:
-        """Check for unusually large transactions."""
-        customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
-        
-        # Look for transactions over $400
-        return (customer_txns[customer_txns['Transaction Amount'] > 400])
-    
     def _check_transaction_frequency(self, customer_id: str) -> bool:
         """Check for high frequency of transactions in any category."""
         customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
@@ -262,10 +254,10 @@ class TransactionAnalysisAgent:
         # Count transactions per merchant category
         category_counts = customer_txns['Merchant Category'].value_counts()
 
-        # Filter categories with more than 5 transactions
-        high_freq_categories = category_counts[category_counts > 5].index.tolist()
+        # Filter categories with more than 3 transactions
+        high_freq_categories = category_counts[category_counts >= 3].index.tolist()
 
-        return high_freq_categories
+        return any(high_freq_categories)
     
     # Event-based nudge check functions
     def _check_salary_deposit(self, customer_id: str) -> bool:
@@ -353,6 +345,42 @@ class TransactionAnalysisAgent:
         }
         
         return formatted_data
+        
+    def check_high_category_spending(self, customer_id: str) -> str:
+        """Return the category with the highest spending if over $200, else return None."""
+        # Get customer transactions
+        customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
+
+        if not customer_txns.empty:
+            # Group by category and find the max transaction amount per category
+            category_max_spending = customer_txns.groupby('Merchant Category')['Transaction Amount'].max()
+
+            # Filter categories where spending is above $200
+            high_spending_categories = category_max_spending[category_max_spending > 200]
+
+            if not high_spending_categories.empty:
+                # Return the category with the highest spending
+                return high_spending_categories.idxmax()
+                    
+    def check_large_transactions(self, customer_id: str) -> bool:
+        """Check for unusually large transactions."""
+        customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
+        # Look for transactions over $400
+        return (customer_txns[customer_txns['Transaction Amount'] > 400])
+    
+    def check_transaction_frequency(self, customer_id: str) -> bool:
+        """Check for high frequency of transactions in any category."""
+        customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
+        
+        # If more than 5 transactions, consider this applicable
+        # return len(customer_txns) > 5
+        # Count transactions per merchant category
+        category_counts = customer_txns['Merchant Category'].value_counts()
+
+        # Filter categories with more than 5 transactions
+        high_freq_categories = category_counts[category_counts > 3].index.tolist()
+
+        return high_freq_categories
     
     def generate_nudges(self, customer_id: str) -> str:
         """
@@ -524,7 +552,8 @@ Make sure to ONLY OUTPUT THE DOCUMENT
                 transaction_data=formatted_data["transaction_data"]
             ),
             "high_category_spending": f"""
-                Analyze the transaction data for {customer_id} and identify categories with unusually high spending. 
+                These transactions are high {self.check_high_category_spending}. ONLY provide ONE nudge for the highest category at max.
+                Analyze the transaction and identify categories with unusually high spending. 
                 Explain about the transaction and why it is considered high. Output the highest transaction.
                 Compare spending in each category against typical patterns and highlight significant increases.
                 Connect this insight to the customer's goals and suggest actionable ways to manage category spending.
@@ -551,15 +580,16 @@ Make sure to ONLY OUTPUT THE DOCUMENT
                 5. If applicable, connects this situation to their financial goals
             """,
             "large_transaction": f"""
-                Analyze the following transaction data for {customer_id} to identify unusually large transactions:
-                Explain about the transaction and why it is considered large transaction. Output the most large transaction.
-                Transaction Data:
-                {formatted_data["transaction_data"]}
+                These transactions are large transactions {self.check_large_transactions}
+                Analyze and Explain about the transactions and why it is considered large transaction.
+                ONLY provide ONE nudge for top 2 largest transactions at max.
                 
                 Budget Data:
                 {formatted_data["budget_data"]}
                 
-                For this analysis, consider transactions over $400 as "large transactions."
+                For this analysis, consider transactions over $400 as "large transactions." 
+                
+                
                 
                 Generate a large transaction nudge that:
                 1. Identifies specific large transactions by date, amount, and merchant
@@ -569,10 +599,9 @@ Make sure to ONLY OUTPUT THE DOCUMENT
                 5. If these transactions impact financial goals, highlight the connection
             """,
             "transaction_frequency": f"""
-                Analyze the following transaction data for {customer_id} to identify categories with high transaction frequency:
-                Explain about the transaction and why it is considered high frequency.
-                Transaction Data:
-                {formatted_data["transaction_data"]}
+                {self.check_transaction_frequency}
+                This is the category with high transaction frequency.
+                Analyse and Explain about the transaction and why it is considered high frequency.
                 
                 User Profile:
                 {formatted_data["user_profile"]}
@@ -720,9 +749,13 @@ def main():
     print(f"Applicable nudge types: {', '.join(applicable_nudges)}")
     print(f"Number of applicable nudges: {len(applicable_nudges)}")
     print("="*50)
-    
+    print(f"large transactions : {agent.check_large_transactions(customer_id)}")
+    print(f"high category spending : {agent.check_high_category_spending(customer_id)}")
+        
     # Generate nudges
     nudges = agent.generate_nudges(customer_id)
+    large_t = agent.check_large_transactions(customer_id)
+    high_t = agent.check_high_category_spending(customer_id)
     
     # Print the results
     print("\n" + "="*50)

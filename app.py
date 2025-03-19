@@ -85,7 +85,7 @@ def display_formatted_response(response):
             heading, content = section.split(":", 1)
             st.subheader(heading.strip())
             st.write(content.strip())
-            print(content.strip())
+            # print(content.strip())
         else:
             # Regular paragraph or content
             st.write(section)
@@ -276,7 +276,7 @@ def nudges_page():
                 # Only generate new nudges if we don't already have them
                 nudges = transaction_agent.generate_nudges(selected_user)
                 st.session_state.nudges = nudges
-                print(nudges)
+                # print(nudges)
             else:
                 nudges = st.session_state.nudges
         
