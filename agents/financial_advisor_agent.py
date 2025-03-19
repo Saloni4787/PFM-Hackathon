@@ -12,6 +12,7 @@ import os
 import sys
 import pandas as pd
 from typing import Dict, List, Any
+import traceback
 import re
 
 # Get the directory of the current script
@@ -129,6 +130,7 @@ class FinancialAdvisorAgent:
             
         except Exception as e:
             print(f"Error processing query: {str(e)}")
+            print(traceback.print_exc())
             return f"I apologize, but I'm having trouble processing your request at the moment. Please try again or ask a different question. Error details: {str(e)}"
     
     def process_query_with_formatting(self, user_query: str, customer_id: str) -> str:
@@ -429,7 +431,7 @@ class FinancialAdvisorAgent:
                         if goals_list:
                             goals_text = "\n".join([
                                 f"- {goal['Goal Type']}: ${goal['Target Amount']:,.2f} "
-                                f"({goal['Progress %']:.1f}% complete, target: {goal['Target Date']})"
+                                f"({goal['Progress (%)']:.1f}% complete, target: {goal['Target Date']})"
                                 for goal in goals_list
                             ])
                             agent_responses["Goal Planning"] = f"Current financial goals:\n{goals_text}"

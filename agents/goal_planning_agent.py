@@ -378,7 +378,7 @@ class GoalPlanningAgent:
             months_remaining = days_remaining // 30
             
             # Calculate progress metrics
-            progress_percentage = goal["progress_percentage"]
+            progress_percentage = goal["Progress (%)"]
             remaining_amount = goal["target_amount"] - goal["current_savings"]
             
             # Calculate on track status
