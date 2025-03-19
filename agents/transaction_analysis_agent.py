@@ -264,11 +264,17 @@ class TransactionAnalysisAgent:
         """Check for recurring salary deposits."""
         customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
         
-        # Look for deposits (negative transaction amounts) over $1000
-        # In real system, would check for recurring pattern from same source
         if not customer_txns.empty:
-            deposits = customer_txns[customer_txns['Transaction Amount'] < 0]
-            return any(abs(deposits['Transaction Amount']) > 1000)
+            # Look for deposits with employment indicators
+            potential_salary = customer_txns[
+                (customer_txns['Transaction Type'] == 'Deposit') & 
+                (customer_txns['Transaction Amount'] > 1000) &
+                (
+                    (customer_txns['Payment Mode'] == 'Direct Deposit') |
+                    (customer_txns['Merchant Name'].str.contains('employer|payroll|salary', case=False, na=False))
+                )
+            ]
+            return len(potential_salary) > 0
         return False
     
     def _check_bill_payment(self, customer_id: str) -> bool:
@@ -289,15 +295,32 @@ class TransactionAnalysisAgent:
         return not customer_subs.empty
     
     def _check_unusual_activity(self, customer_id: str) -> bool:
-        """Check for unusual account activity or spending patterns."""
-        # For MVP implementation, we'll consider merchant categories not frequently used
+        """Check for unusual activity based on transaction amount using IQR method."""
         customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
         
-        # In a real system, this would be more sophisticated with statistical analysis
-        # For now, consider transactions over $300 as unusual
-        if not customer_txns.empty:
-            return any(customer_txns['Transaction Amount'] > 300)
-        return False
+        if len(customer_txns) < 4:  # Need enough data points for meaningful IQR analysis
+            return False
+        
+        try:
+            # Calculate IQR for transaction amounts
+            amounts = customer_txns['Transaction Amount']
+            q1 = amounts.quantile(0.25)
+            q3 = amounts.quantile(0.75)
+            iqr = q3 - q1
+            
+            # Define upper bound for outliers (Q3 + 1.5*IQR)
+            upper_bound = q3 + 1.5 * iqr
+            
+            # Find transactions that exceed the upper bound
+            unusual_txns = customer_txns[amounts > upper_bound]
+            
+            # Return True if any unusual transactions are found
+            return len(unusual_txns) > 0
+        
+        except Exception as e:
+            print(f"Error in unusual activity detection: {str(e)}")
+            # Fallback to simple threshold in case of errors
+            return False
     
     def _check_overdraft_fee(self, customer_id: str) -> bool:
         """Check if customer has been charged overdraft fees."""
@@ -345,6 +368,25 @@ class TransactionAnalysisAgent:
         }
         
         return formatted_data
+    
+    def check_unusual_activity(self, customer_id: str) -> bool:
+        """Check for unusual activity based on transaction amount using IQR method."""
+        customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
+                
+        # Calculate IQR for transaction amounts
+        amounts = customer_txns['Transaction Amount']
+        q1 = amounts.quantile(0.25)
+        q3 = amounts.quantile(0.75)
+        iqr = q3 - q1
+        
+        # Define upper bound for outliers (Q3 + 1.5*IQR)
+        upper_bound = q3 + 1.5 * iqr
+        
+        # Find transactions that exceed the upper bound
+        unusual_txns = customer_txns[amounts > upper_bound]
+        
+        # Return True if any unusual transactions are found
+        return unusual_txns
         
     def check_high_category_spending(self, customer_id: str) -> str:
         """Return the category with the highest spending if over $200, else return None."""
@@ -360,13 +402,16 @@ class TransactionAnalysisAgent:
 
             if not high_spending_categories.empty:
                 # Return the category with the highest spending
+                print(high_spending_categories.idxmax())
                 return high_spending_categories.idxmax()
                     
     def check_large_transactions(self, customer_id: str) -> bool:
         """Check for unusually large transactions."""
         customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
         # Look for transactions over $400
-        return (customer_txns[customer_txns['Transaction Amount'] > 400])
+        largest_transaction = customer_txns.loc[customer_txns['Transaction Amount'].idxmax()]
+
+        return largest_transaction
     
     def check_transaction_frequency(self, customer_id: str) -> bool:
         """Check for high frequency of transactions in any category."""
@@ -379,8 +424,43 @@ class TransactionAnalysisAgent:
 
         # Filter categories with more than 5 transactions
         high_freq_categories = category_counts[category_counts > 3].index.tolist()
+        highest_freq_category = category_counts.idxmax()
 
-        return high_freq_categories
+        return highest_freq_category
+
+    
+    def check_salary_deposit(self, customer_id: str) -> bool:
+        """Check for recurring salary deposits."""
+        customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
+        
+        if not customer_txns.empty:
+            # Look for deposits with employment indicators
+            potential_salary = customer_txns[
+                (customer_txns['Transaction Type'] == 'Deposit') & 
+                (customer_txns['Transaction Amount'] > 1000) &
+                (
+                    (customer_txns['Payment Mode'] == 'Direct Deposit') |
+                    (customer_txns['Merchant Name'].str.contains('employer|payroll|salary', case=False, na=False))
+                )
+            ]
+            return potential_salary
+    def check_overdraft_fee(self, customer_id: str) -> bool:
+        """Check if customer has been charged overdraft fees."""
+        customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
+        
+        # Look for transactions with "overdraft fee" or "overdraft charge" in description
+        if not customer_txns.empty:
+            overdraft_txns = customer_txns['Description'].str.contains('overdraft', case=False)
+            return overdraft_txns
+     
+    def check_bill_payment(self, customer_id: str) -> bool:
+        """Check for upcoming bill payments based on historical patterns."""
+        # For MVP, we'll check if there are any transactions with "bill", "payment", or "utility" in description
+        customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
+        
+        if not customer_txns.empty:
+            bill_related = customer_txns['Description'].str.contains('bill|payment|utility', case=False)
+            return bill_related 
     
     def generate_nudges(self, customer_id: str) -> str:
         """
@@ -552,7 +632,7 @@ Make sure to ONLY OUTPUT THE DOCUMENT
                 transaction_data=formatted_data["transaction_data"]
             ),
             "high_category_spending": f"""
-                These transactions are high {self.check_high_category_spending}. ONLY provide ONE nudge for the highest category at max.
+                This is the highest category spending transactions {self.check_high_category_spending}. 
                 Analyze the transaction and identify categories with unusually high spending. 
                 Explain about the transaction and why it is considered high. Output the highest transaction.
                 Compare spending in each category against typical patterns and highlight significant increases.
@@ -580,16 +660,11 @@ Make sure to ONLY OUTPUT THE DOCUMENT
                 5. If applicable, connects this situation to their financial goals
             """,
             "large_transaction": f"""
-                These transactions are large transactions {self.check_large_transactions}
+                This is the largest transactions {self.check_large_transactions}
                 Analyze and Explain about the transactions and why it is considered large transaction.
-                ONLY provide ONE nudge for top 2 largest transactions at max.
                 
                 Budget Data:
                 {formatted_data["budget_data"]}
-                
-                For this analysis, consider transactions over $400 as "large transactions." 
-                
-                
                 
                 Generate a large transaction nudge that:
                 1. Identifies specific large transactions by date, amount, and merchant
@@ -600,7 +675,7 @@ Make sure to ONLY OUTPUT THE DOCUMENT
             """,
             "transaction_frequency": f"""
                 {self.check_transaction_frequency}
-                This is the category with high transaction frequency.
+                This is the transaction with highest category frequency.
                 Analyse and Explain about the transaction and why it is considered high frequency.
                 
                 User Profile:
@@ -618,11 +693,9 @@ Make sure to ONLY OUTPUT THE DOCUMENT
             """,
             # Event-based nudge prompts
             "salary_deposit": f"""
-                Analyze the transaction data for {customer_id} to identify salary deposit patterns:
-                
-                Transaction Data:
-                {formatted_data["transaction_data"]}
-                
+                {self.check_salary_deposit}
+                This is the salary deposit transaction.
+                                
                 User Profile:
                 {formatted_data["user_profile"]}
                 
@@ -637,10 +710,8 @@ Make sure to ONLY OUTPUT THE DOCUMENT
                 5. Relates the recommendations to their budget categories and goal progress
             """,
             "bill_payment": f"""
-                Analyze the transaction data for {customer_id} to identify recurring bill payments:
-                
-                Transaction Data:
-                {formatted_data["transaction_data"]}
+                {self.check_bill_payment}
+                This is the recurring bill payments transaction.
                 
                 User Profile:
                 {formatted_data["user_profile"]}
@@ -661,10 +732,8 @@ Make sure to ONLY OUTPUT THE DOCUMENT
                 transaction_data=formatted_data["transaction_data"]
             ),
             "unusual_activity": f"""
-                Analyze the transaction data for {customer_id} to identify unusual activity:
-                Explain about the transaction and why it is considered unusual.
-                Transaction Data:
-                {formatted_data["transaction_data"]}
+                {self.check_unusual_activity}
+                These are the unusual activity transaction. Explain about the transaction and why it is considered unusual.
                 
                 User Profile:
                 {formatted_data["user_profile"]}
@@ -677,10 +746,8 @@ Make sure to ONLY OUTPUT THE DOCUMENT
                 5. Suggests security measures if appropriate
             """,
             "overdraft_fee": f"""
-                Analyze the transaction data for {customer_id} to identify overdraft fees:
-                
-                Transaction Data:
-                {formatted_data["transaction_data"]}
+                {self.check_overdraft_fee}
+                This is the overdraft fee transaction.
                 
                 User Profile:
                 {formatted_data["user_profile"]}
