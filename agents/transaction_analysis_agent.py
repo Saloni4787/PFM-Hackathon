@@ -245,11 +245,17 @@ class TransactionAnalysisAgent:
         """Check for recurring salary deposits."""
         customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
         
-        # Look for deposits (negative transaction amounts) over $1000
-        # In real system, would check for recurring pattern from same source
         if not customer_txns.empty:
-            deposits = customer_txns[customer_txns['Transaction Amount'] < 0]
-            return any(abs(deposits['Transaction Amount']) > 1000)
+            # Look for deposits with employment indicators
+            potential_salary = customer_txns[
+                (customer_txns['Transaction Type'] == 'Deposit') & 
+                (customer_txns['Transaction Amount'] > 1000) &
+                (
+                    (customer_txns['Payment Mode'] == 'Direct Deposit') |
+                    (customer_txns['Merchant Name'].str.contains('employer|payroll|salary', case=False, na=False))
+                )
+            ]
+            return len(potential_salary) > 0
         return False
     
     def _check_bill_payment(self, customer_id: str) -> bool:
@@ -270,15 +276,32 @@ class TransactionAnalysisAgent:
         return not customer_subs.empty
     
     def _check_unusual_activity(self, customer_id: str) -> bool:
-        """Check for unusual account activity or spending patterns."""
-        # For MVP implementation, we'll consider merchant categories not frequently used
+        """Check for unusual activity based on transaction amount using IQR method."""
         customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
         
-        # In a real system, this would be more sophisticated with statistical analysis
-        # For now, consider transactions over $300 as unusual
-        if not customer_txns.empty:
+        if len(customer_txns) < 4:  # Need enough data points for meaningful IQR analysis
+            return False
+        
+        try:
+            # Calculate IQR for transaction amounts
+            amounts = customer_txns['Transaction Amount']
+            q1 = amounts.quantile(0.25)
+            q3 = amounts.quantile(0.75)
+            iqr = q3 - q1
+            
+            # Define upper bound for outliers (Q3 + 1.5*IQR)
+            upper_bound = q3 + 1.5 * iqr
+            
+            # Find transactions that exceed the upper bound
+            unusual_txns = customer_txns[amounts > upper_bound]
+            
+            # Return True if any unusual transactions are found
+            return len(unusual_txns) > 0
+        
+        except Exception as e:
+            print(f"Error in unusual activity detection: {str(e)}")
+            # Fallback to simple threshold in case of errors
             return any(customer_txns['Transaction Amount'] > 300)
-        return False
     
     def _check_overdraft_fee(self, customer_id: str) -> bool:
         """Check if customer has been charged overdraft fees."""
