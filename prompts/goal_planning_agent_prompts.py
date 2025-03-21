@@ -66,7 +66,8 @@ class GoalPlanningPrompts:
 
     Format your response as a clear explanation that a financial advisor would provide to a client who has just adjusted their goal timeline."""
 
-    GENERAL_GOAL_PROMPT = """The user {customer_id} has asked about financial goals with the following query:
+    # Split into two separate prompts - one for users with goals, one for users without
+    GENERAL_GOAL_PROMPT_WITH_GOALS = """The user {customer_id} has asked about financial goals with the following query:
 
     "{user_query}"
 
@@ -76,7 +77,24 @@ class GoalPlanningPrompts:
     Please provide a helpful response that:
     1. Addresses their query about financial goals
     2. References their current goals if relevant
-    {('3. Provides guidance based on their specific goals' + chr(10) + '4. Offers next steps related to their existing goals') if has_goals else '3. Explains the benefits of setting financial goals' + chr(10) + '4. Offers suggestions for getting started with goal planning'}
+    3. Provides guidance based on their specific goals
+    4. Offers next steps related to their existing goals
+    5. Maintains a supportive and encouraging tone
+
+    Format your response as a conversational yet informative message from a financial goal planning assistant."""
+
+    GENERAL_GOAL_PROMPT_WITHOUT_GOALS = """The user {customer_id} has asked about financial goals with the following query:
+
+    "{user_query}"
+
+    Their current goal situation is:
+    {goals_summary}
+
+    Please provide a helpful response that:
+    1. Addresses their query about financial goals
+    2. References their current goals if relevant
+    3. Explains the benefits of setting financial goals
+    4. Offers suggestions for getting started with goal planning
     5. Maintains a supportive and encouraging tone
 
     Format your response as a conversational yet informative message from a financial goal planning assistant."""

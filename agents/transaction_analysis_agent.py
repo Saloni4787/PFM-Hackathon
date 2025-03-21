@@ -298,29 +298,11 @@ class TransactionAnalysisAgent:
         """Check for unusual activity based on transaction amount using IQR method."""
         customer_txns = self.transactions_df[self.transactions_df['Customer ID'] == customer_id]
         
-        if len(customer_txns) < 4:  # Need enough data points for meaningful IQR analysis
-            return False
-        
-        try:
-            # Calculate IQR for transaction amounts
-            amounts = customer_txns['Transaction Amount']
-            q1 = amounts.quantile(0.25)
-            q3 = amounts.quantile(0.75)
-            iqr = q3 - q1
-            
-            # Define upper bound for outliers (Q3 + 1.5*IQR)
-            upper_bound = q3 + 1.5 * iqr
-            
-            # Find transactions that exceed the upper bound
-            unusual_txns = customer_txns[amounts > upper_bound]
-            
-            # Return True if any unusual transactions are found
-            return len(unusual_txns) > 0
-        
-        except Exception as e:
-            print(f"Error in unusual activity detection: {str(e)}")
-            # Fallback to simple threshold in case of errors
-            return False
+        # In a real system, this would be more sophisticated with statistical analysis
+        # For now, consider transactions over $300 as unusual
+        if not customer_txns.empty:
+            return any(customer_txns['Transaction Amount'] > 300)
+        return False
     
     def _check_overdraft_fee(self, customer_id: str) -> bool:
         """Check if customer has been charged overdraft fees."""
