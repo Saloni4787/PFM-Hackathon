@@ -113,3 +113,15 @@ venv.bak/
 .idea/
 *.swp
 *.swo
+
+#data
+*.csv
+*.xlsx
+
+#zip files
+*.zip
+
+#ipynb files
+*.ipynb
+
+financial_data_generator_india.py

@@ -1,9 +1,14 @@
-pre-commit==3.3.2
-ruff==0.5.1
-mypy==1.3.0
-pytest==7.3.1
-pytest-cov==4.0.0
-types-all==1.0.0
-openai
+# pre-commit
+# ruff
+# mypy
+# pytest
+# pytest-cov
+# types-all
+openai==0.28
 pandas
 numpy
+streamlit
+pandas
+matplotlib
+plotly
+python-dotenv
