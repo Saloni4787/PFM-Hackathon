@@ -87,6 +87,16 @@ The agents are supported by dedicated prompt files to guide their interactions, 
   
   pip install -r requirements.txt
 
+- **Set Up .ENV File**
+  
+  Create .env file in your project directory and add following lines
+
+  DEKA_LLM_API_URL=https://dekallm.cloudeka.ai/v1/chat/completions
+  DEKA_LLM_API_KEY=<Your_DEKA_LLM_API_KEY>
+  DEKA_LLM_MODEL_NAME=meta/llama-3.3-70b-instruct
+  DEKA_EMBEDDING_API_URL=https://dekallm.cloudeka.ai/v1/embeddings
+  DEKA_EMBEDDING_MODEL_NAME=baai/bge-multilingual-gemma2
+
 - **Initiallize Synthetic Data**:
   
   create synthetic_data directory in your project folder and then run following command.
