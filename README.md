@@ -73,7 +73,7 @@ The agents are supported by dedicated prompt files to guide their interactions, 
 - **Clone Git Repo**
   
   ```bash
-  git clone <repository_url>
+  git clone https://github.com/Saloni4787/PFM-Hackathon.git
   
   cd <repository_directory>
   ```
@@ -117,5 +117,5 @@ The agents are supported by dedicated prompt files to guide their interactions, 
   Run the main application with:
 
   ```bash
-  python app.py
+  streamlit run app.py
   ```
