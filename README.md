@@ -35,6 +35,7 @@ The agents are supported by dedicated prompt files to guide their interactions, 
 ```plaintext
 .
 ├── app.py                         # Main application entry point
+├── financial_data_generator.py    # Initiallize synthetic data                  
 ├── requirements.txt               # Python dependencies
 ├── agents/                        # Agent modules
 │   ├── asset_allocation_agent.py
@@ -70,16 +71,27 @@ The agents are supported by dedicated prompt files to guide their interactions, 
 ## Set Up Enenvironment
 
 - **Clone Git Repo**
+  
   git clone <repository_url>
+  
   cd <repository_directory>
 
 
 - **Create Virtual Env**:
+  
   python -m venv venv
+  
   source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 - **Install Requirements**:
+  
   pip install -r requirements.txt
+
+- **Initiallize Synthetic Data**:
+  
+  create synthetic_data directory in your project folder and then run following command.
+
+  python financial_data_generator.py
 
 ## Usage
 
