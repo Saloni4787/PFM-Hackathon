@@ -72,39 +72,50 @@ The agents are supported by dedicated prompt files to guide their interactions, 
 
 - **Clone Git Repo**
   
+  ```bash
   git clone <repository_url>
   
   cd <repository_directory>
-
+  ```
 
 - **Create Virtual Env**:
   
+  ```bash
   python -m venv venv
-  
+
   source venv/bin/activate  # On Windows: venv\Scripts\activate
+  ```
 
 - **Install Requirements**:
   
+  ```bash
   pip install -r requirements.txt
+  ```
 
 - **Set Up .ENV File**
   
   Create .env file in your project directory and add following lines
 
+  ```bash
   DEKA_LLM_API_URL=https://dekallm.cloudeka.ai/v1/chat/completions
   DEKA_LLM_API_KEY=<Your_DEKA_LLM_API_KEY>
   DEKA_LLM_MODEL_NAME=meta/llama-3.3-70b-instruct
   DEKA_EMBEDDING_API_URL=https://dekallm.cloudeka.ai/v1/embeddings
   DEKA_EMBEDDING_MODEL_NAME=baai/bge-multilingual-gemma2
+  ```
 
 - **Initiallize Synthetic Data**:
   
   create synthetic_data directory in your project folder and then run following command.
-
+  
+  ```bash
   python financial_data_generator.py
+  ```
 
 ## Usage
 
   Run the main application with:
 
+  ```bash
   python app.py
+  ```
