@@ -69,6 +69,11 @@ The agents are supported by dedicated prompt files to guide their interactions, 
 
 ## Set Up Enenvironment
 
+- **Clone Git Repo**
+  git clone <repository_url>
+  cd <repository_directory>
+
+
 - **Create Virtual Env**:
   python -m venv venv
   source venv/bin/activate  # On Windows: venv\Scripts\activate
