@@ -89,7 +89,7 @@ The agents are supported by dedicated prompt files to guide their interactions, 
 
 - **Set Up .ENV File**
   
-  Create .env file in your and add following lines
+  Create .env file in your project directory and add following lines
 
   DEKA_LLM_API_URL=https://dekallm.cloudeka.ai/v1/chat/completions
   DEKA_LLM_API_KEY=<Your_DEKA_LLM_API_KEY>
